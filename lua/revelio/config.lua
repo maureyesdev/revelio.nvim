@@ -1,7 +1,7 @@
 local M = {}
 
 local DEFAULTS = {
-  prefix = "🪄",
+  prefix = "🚀",
   delimiter = "~",
   quote = '"',
   include_filename = true,

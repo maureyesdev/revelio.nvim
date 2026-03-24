@@ -64,7 +64,7 @@ const userId = req.params.id
 
 // after  (<leader>rl on `userId`)
 const userId = req.params.id
-console.log("🪄 ~ auth.js ~ getUser ~ userId:", userId);
+console.log("🚀 ~ auth.js ~ getUser ~ userId:", userId);
 ```
 
 ---
@@ -104,7 +104,7 @@ Call `setup()` with any overrides. Unspecified keys keep their defaults.
 ```lua
 require("revelio").setup({
   -- String prepended to every log message — used to identify revelio logs
-  prefix = "🪄",
+  prefix = "🚀",
 
   -- Separator between message parts
   delimiter = "~",
@@ -192,7 +192,7 @@ require("revelio").setup({
 Example with all options on:
 
 ```javascript
-console.log("🪄 ~ app.js:42 ~ UserService ~ getById ~ userId:", userId);
+console.log("🚀 ~ app.js:42 ~ UserService ~ getById ~ userId:", userId);
 ```
 
 **Manager operations** (`delete` / `comment` / `uncomment` / `correct`)

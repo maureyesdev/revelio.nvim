@@ -29,7 +29,7 @@ describe("revelio.manager", function()
     it("finds lines containing the prefix", function()
       local bufnr = make_buf({
         "const x = 1",
-        'console.log("🪄 ~ app.js ~ myFunc ~ x:", x);',
+        'console.log("🚀 ~ app.js ~ myFunc ~ x:", x);',
         "const y = 2",
       })
       local result = manager.find_revelio_lines(bufnr, cfg)
@@ -40,9 +40,9 @@ describe("revelio.manager", function()
 
     it("finds multiple revelio lines", function()
       local bufnr = make_buf({
-        'console.log("🪄 ~ x:", x);',
+        'console.log("🚀 ~ x:", x);',
         "const y = 2",
-        'console.log("🪄 ~ y:", y);',
+        'console.log("🚀 ~ y:", y);',
       })
       local result = manager.find_revelio_lines(bufnr, cfg)
       assert.equals(2, #result)
@@ -53,7 +53,7 @@ describe("revelio.manager", function()
 
     it("marks JS-commented lines as commented", function()
       local bufnr = make_buf({
-        '// console.log("🪄 ~ x:", x);',
+        '// console.log("🚀 ~ x:", x);',
       })
       local result = manager.find_revelio_lines(bufnr, cfg)
       assert.equals(1, #result)
@@ -63,7 +63,7 @@ describe("revelio.manager", function()
 
     it("marks Python-commented lines as commented", function()
       local bufnr = make_buf({
-        '# print("🪄 ~ x:", x)',
+        '# print("🚀 ~ x:", x)',
       })
       local result = manager.find_revelio_lines(bufnr, cfg)
       assert.equals(1, #result)
@@ -73,7 +73,7 @@ describe("revelio.manager", function()
 
     it("marks Lua-commented lines as commented", function()
       local bufnr = make_buf({
-        '-- print("🪄 ~ x:", x)',
+        '-- print("🚀 ~ x:", x)',
       })
       local result = manager.find_revelio_lines(bufnr, cfg)
       assert.equals(1, #result)
@@ -83,7 +83,7 @@ describe("revelio.manager", function()
 
     it("marks active (non-commented) lines correctly", function()
       local bufnr = make_buf({
-        'console.log("🪄 ~ x:", x);',
+        'console.log("🚀 ~ x:", x);',
       })
       local result = manager.find_revelio_lines(bufnr, cfg)
       assert.equals(1, #result)
@@ -93,7 +93,7 @@ describe("revelio.manager", function()
 
     it("detects commented lines with leading whitespace", function()
       local bufnr = make_buf({
-        '  // console.log("🪄 ~ x:", x);',
+        '  // console.log("🚀 ~ x:", x);',
       })
       local result = manager.find_revelio_lines(bufnr, cfg)
       assert.equals(1, #result)
@@ -106,7 +106,7 @@ describe("revelio.manager", function()
       cfg = config.get()
       local bufnr = make_buf({
         'console.log("DBG ~ x:", x);',
-        'console.log("🪄 ~ y:", y);',
+        'console.log("🚀 ~ y:", y);',
       })
       local result = manager.find_revelio_lines(bufnr, cfg)
       assert.equals(1, #result)
@@ -119,7 +119,7 @@ describe("revelio.manager", function()
     it("removes revelio lines from buffer", function()
       local bufnr = make_buf({
         "const x = 1",
-        'console.log("🪄 ~ x:", x);',
+        'console.log("🚀 ~ x:", x);',
         "const y = 2",
       })
       manager.delete_logs(bufnr, cfg)
@@ -132,9 +132,9 @@ describe("revelio.manager", function()
 
     it("removes multiple revelio lines in correct order", function()
       local bufnr = make_buf({
-        'console.log("🪄 ~ a:", a);',
+        'console.log("🚀 ~ a:", a);',
         "const b = 2",
-        'console.log("🪄 ~ b:", b);',
+        'console.log("🚀 ~ b:", b);',
       })
       manager.delete_logs(bufnr, cfg)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
@@ -145,7 +145,7 @@ describe("revelio.manager", function()
 
     it("also deletes commented revelio lines", function()
       local bufnr = make_buf({
-        '// console.log("🪄 ~ x:", x);',
+        '// console.log("🚀 ~ x:", x);',
         "const y = 2",
       })
       manager.delete_logs(bufnr, cfg)
@@ -167,61 +167,61 @@ describe("revelio.manager", function()
   describe("comment_logs()", function()
     it("comments JS revelio lines with //", function()
       local bufnr = make_buf({
-        'console.log("🪄 ~ x:", x);',
+        'console.log("🚀 ~ x:", x);',
       }, "javascript")
       manager.comment_logs(bufnr, cfg)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      assert.equals('// console.log("🪄 ~ x:", x);', lines[1])
+      assert.equals('// console.log("🚀 ~ x:", x);', lines[1])
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
 
     it("comments Python revelio lines with #", function()
       local bufnr = make_buf({
-        'print("🪄 ~ x:", x)',
+        'print("🚀 ~ x:", x)',
       }, "python")
       manager.comment_logs(bufnr, cfg)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      assert.equals('# print("🪄 ~ x:", x)', lines[1])
+      assert.equals('# print("🚀 ~ x:", x)', lines[1])
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
 
     it("comments Lua revelio lines with --", function()
       local bufnr = make_buf({
-        'print("🪄 ~ x:", x)',
+        'print("🚀 ~ x:", x)',
       }, "lua")
       manager.comment_logs(bufnr, cfg)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      assert.equals('-- print("🪄 ~ x:", x)', lines[1])
+      assert.equals('-- print("🚀 ~ x:", x)', lines[1])
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
 
     it("comments Go revelio lines with //", function()
       local bufnr = make_buf({
-        'fmt.Println("🪄 ~ x:", x)',
+        'fmt.Println("🚀 ~ x:", x)',
       }, "go")
       manager.comment_logs(bufnr, cfg)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      assert.equals('// fmt.Println("🪄 ~ x:", x)', lines[1])
+      assert.equals('// fmt.Println("🚀 ~ x:", x)', lines[1])
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
 
     it("preserves indentation when commenting", function()
       local bufnr = make_buf({
-        '  console.log("🪄 ~ x:", x);',
+        '  console.log("🚀 ~ x:", x);',
       }, "javascript")
       manager.comment_logs(bufnr, cfg)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      assert.equals('  // console.log("🪄 ~ x:", x);', lines[1])
+      assert.equals('  // console.log("🚀 ~ x:", x);', lines[1])
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
 
     it("does not double-comment already-commented lines", function()
       local bufnr = make_buf({
-        '// console.log("🪄 ~ x:", x);',
+        '// console.log("🚀 ~ x:", x);',
       }, "javascript")
       manager.comment_logs(bufnr, cfg)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      assert.equals('// console.log("🪄 ~ x:", x);', lines[1])
+      assert.equals('// console.log("🚀 ~ x:", x);', lines[1])
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
   end)
@@ -229,51 +229,51 @@ describe("revelio.manager", function()
   describe("uncomment_logs()", function()
     it("removes // comment from JS revelio lines", function()
       local bufnr = make_buf({
-        '// console.log("🪄 ~ x:", x);',
+        '// console.log("🚀 ~ x:", x);',
       }, "javascript")
       manager.uncomment_logs(bufnr, cfg)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      assert.equals('console.log("🪄 ~ x:", x);', lines[1])
+      assert.equals('console.log("🚀 ~ x:", x);', lines[1])
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
 
     it("removes # comment from Python revelio lines", function()
       local bufnr = make_buf({
-        '# print("🪄 ~ x:", x)',
+        '# print("🚀 ~ x:", x)',
       }, "python")
       manager.uncomment_logs(bufnr, cfg)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      assert.equals('print("🪄 ~ x:", x)', lines[1])
+      assert.equals('print("🚀 ~ x:", x)', lines[1])
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
 
     it("removes -- comment from Lua revelio lines", function()
       local bufnr = make_buf({
-        '-- print("🪄 ~ x:", x)',
+        '-- print("🚀 ~ x:", x)',
       }, "lua")
       manager.uncomment_logs(bufnr, cfg)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      assert.equals('print("🪄 ~ x:", x)', lines[1])
+      assert.equals('print("🚀 ~ x:", x)', lines[1])
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
 
     it("preserves indentation when uncommenting", function()
       local bufnr = make_buf({
-        '  // console.log("🪄 ~ x:", x);',
+        '  // console.log("🚀 ~ x:", x);',
       }, "javascript")
       manager.uncomment_logs(bufnr, cfg)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      assert.equals('  console.log("🪄 ~ x:", x);', lines[1])
+      assert.equals('  console.log("🚀 ~ x:", x);', lines[1])
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
 
     it("does not modify non-commented revelio lines", function()
       local bufnr = make_buf({
-        'console.log("🪄 ~ x:", x);',
+        'console.log("🚀 ~ x:", x);',
       }, "javascript")
       manager.uncomment_logs(bufnr, cfg)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      assert.equals('console.log("🪄 ~ x:", x);', lines[1])
+      assert.equals('console.log("🚀 ~ x:", x);', lines[1])
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
   end)
@@ -285,7 +285,7 @@ describe("revelio.manager", function()
       vim.api.nvim_buf_set_name(bufnr, "/project/app.js")
       vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
         "const myVar = 1",
-        'console.log("🪄 ~ app.js:99 ~ myVar:", myVar);',
+        'console.log("🚀 ~ app.js:99 ~ myVar:", myVar);',
       })
       manager.correct_logs(bufnr, cfg)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
@@ -299,11 +299,11 @@ describe("revelio.manager", function()
       vim.api.nvim_buf_set_name(bufnr, "/project/app.js")
       vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
         "const x = 1",
-        'console.log("🪄 ~ myFunc ~ x:", x);',
+        'console.log("🚀 ~ myFunc ~ x:", x);',
       })
       manager.correct_logs(bufnr, cfg)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      assert.equals('console.log("🪄 ~ myFunc ~ x:", x);', lines[2])
+      assert.equals('console.log("🚀 ~ myFunc ~ x:", x);', lines[2])
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
   end)

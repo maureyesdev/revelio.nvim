@@ -86,7 +86,7 @@ describe("revelio.formatter", function()
         fn_name = "myFunc",
         class_name = "MyClass",
       }, js_spec, cfg)
-      assert.equals('console.log("🪄 ~ app.js:42 ~ MyClass ~ myFunc ~ myVar:", myVar);', line)
+      assert.equals('console.log("🚀 ~ app.js:42 ~ MyClass ~ myFunc ~ myVar:", myVar);', line)
     end)
 
     it("builds JS log without class (default config)", function()
@@ -94,19 +94,19 @@ describe("revelio.formatter", function()
         filename = "app.js",
         fn_name = "myFunc",
       }, js_spec, cfg)
-      assert.equals('console.log("🪄 ~ app.js ~ myFunc ~ myVar:", myVar);', line)
+      assert.equals('console.log("🚀 ~ app.js ~ myFunc ~ myVar:", myVar);', line)
     end)
 
     it("builds JS log without filename", function()
       local line = formatter.build_log_line("myVar", {
         fn_name = "myFunc",
       }, js_spec, cfg)
-      assert.equals('console.log("🪄 ~ myFunc ~ myVar:", myVar);', line)
+      assert.equals('console.log("🚀 ~ myFunc ~ myVar:", myVar);', line)
     end)
 
     it("builds JS log with no context (only var)", function()
       local line = formatter.build_log_line("myVar", {}, js_spec, cfg)
-      assert.equals('console.log("🪄 ~ myVar:", myVar);', line)
+      assert.equals('console.log("🚀 ~ myVar:", myVar);', line)
     end)
 
     it("adds semicolon for JS", function()
@@ -170,13 +170,13 @@ describe("revelio.formatter", function()
         filename = "script.py",
         fn_name = "process",
       }, py_spec, cfg)
-      assert.equals('print("🪄 ~ script.py ~ process ~ data:", data)', line)
+      assert.equals('print("🚀 ~ script.py ~ process ~ data:", data)', line)
     end)
 
     it("builds lua log correctly", function()
       local lua_spec = { fn = "print", semicolon = false }
       local line = formatter.build_log_line("tbl", { fn_name = "myFn" }, lua_spec, cfg)
-      assert.equals('print("🪄 ~ myFn ~ tbl:", tbl)', line)
+      assert.equals('print("🚀 ~ myFn ~ tbl:", tbl)', line)
     end)
   end)
 end)
