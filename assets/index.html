@@ -4,9 +4,13 @@
     <meta charset="utf-8" />
     <title>revelio.nvim</title>
     <link rel="stylesheet" href="/app.css" />
+    {{CLIENT_HEAD}}
   </head>
   <body>
     <div id="placeholder">revelio: waiting for content&hellip;</div>
+    <div id="content" class="markdown-body"></div>
+    <script id="revelio-payload" type="application/json">{{INITIAL_PAYLOAD}}</script>
+    {{CLIENT_SCRIPTS}}
     <script src="/app.js"></script>
   </body>
 </html>

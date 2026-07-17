@@ -54,10 +54,10 @@ local DEFAULTS = {
   cdn = {
     markdown_it = "https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js",
     task_lists = "https://cdn.jsdelivr.net/npm/markdown-it-task-lists@2/dist/markdown-it-task-lists.min.js",
-    highlight_js = "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js",
-    highlight_css_light = "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github.min.css",
-    highlight_css_dark = "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css",
-    github_markdown_css = "https://cdn.jsdelivr.net/npm/github-markdown-css@5/github-markdown.min.css",
+    highlight_js = "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/highlight.min.js",
+    highlight_css_light = "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/styles/github.min.css",
+    highlight_css_dark = "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/styles/github-dark.min.css",
+    github_markdown_css = "https://cdn.jsdelivr.net/npm/github-markdown-css@5/github-markdown.css",
   },
 
   export = {
