@@ -4,8 +4,10 @@
 // change. Phase 4: syntax-highlight fenced code blocks via highlight.js —
 // a fence whose language highlight.js doesn't recognize (e.g. a
 // ```mermaid block, since mermaid_fences = "plain" in v1) falls through to
-// markdown-it's own default escaping, i.e. renders as plain code. Scroll
-// sync (Phase 5) and theme switching (Phase 6) hook in below.
+// markdown-it's own default escaping, i.e. renders as plain code. Phase 5:
+// scroll sync — every block-level token carries its source line as a
+// data-line attribute; a "cursor" SSE event scrolls the nearest one into
+// view. Theme switching (Phase 6) hooks in below.
 (function () {
   var payloadEl = document.getElementById("revelio-payload");
   var initial = { source: "" };
@@ -34,6 +36,16 @@
     md.use(window.markdownitTaskLists, { enabled: false });
   }
 
+  // Stamp data-line="<source line>" on every block-level token so a later
+  // "cursor" SSE event can find the rendered element nearest a given line.
+  md.core.ruler.push("revelio-line-numbers", function (state) {
+    state.tokens.forEach(function (token) {
+      if (token.map) {
+        token.attrSet("data-line", String(token.map[0]));
+      }
+    });
+  });
+
   function render(source) {
     if (placeholderEl) {
       placeholderEl.remove();
@@ -44,10 +56,34 @@
 
   render(initial.source);
 
+  // Scroll the rendered block nearest (at or before) the given source line
+  // into view. "Nearest" means the largest data-line that does not exceed
+  // the target — the block the cursor is actually inside, not the next one.
+  function scrollToLine(line) {
+    var candidates = contentEl.querySelectorAll("[data-line]");
+    var best = null;
+    var bestLine = -1;
+    for (var i = 0; i < candidates.length; i++) {
+      var el = candidates[i];
+      var elLine = parseInt(el.getAttribute("data-line"), 10);
+      if (elLine <= line && elLine > bestLine) {
+        best = el;
+        bestLine = elLine;
+      }
+    }
+    if (best) {
+      best.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }
+
   var events = new EventSource("/events");
   events.addEventListener("source", function (evt) {
     var data = JSON.parse(evt.data);
     render(data.source);
+  });
+  events.addEventListener("cursor", function (evt) {
+    var data = JSON.parse(evt.data);
+    scrollToLine(data.line);
   });
   events.onerror = function () {
     console.warn("revelio: SSE connection lost — the preview will stop updating live");

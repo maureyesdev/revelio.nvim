@@ -231,6 +231,57 @@ describe("revelio.session", function()
     end)
   end)
 
+  describe("scroll sync (cursor)", function()
+    it("broadcasts a cursor SSE event on CursorMoved in a markdown buffer with follow_cursor enabled", function()
+      config.setup({ port = 0, auto_open_browser = false, follow_cursor = true, debounce_ms = 10 })
+      local bufnr = make_markdown_buffer({ "# Title", "line two", "line three" })
+      vim.api.nvim_set_current_buf(bufnr)
+      session.open(bufnr)
+
+      local client, get_received = connect_sse(session.port())
+      vim.wait(1000, function()
+        return server.client_count() == 1
+      end, 10)
+
+      vim.api.nvim_win_set_cursor(0, { 3, 0 }) -- 1-based; line three
+      vim.api.nvim_exec_autocmds("CursorMoved", { buffer = bufnr })
+
+      vim.wait(500, function()
+        return get_received():find("event: cursor", 1, true) ~= nil
+      end, 10)
+
+      local received = get_received()
+      assert.matches("event: cursor", received)
+      assert.matches('"line":2', received) -- 0-based
+
+      pcall(function()
+        client:close()
+      end)
+    end)
+
+    it("does not attach a CursorMoved watcher when follow_cursor = false", function()
+      config.setup({ port = 0, auto_open_browser = false, follow_cursor = false, debounce_ms = 10 })
+      local bufnr = make_markdown_buffer({ "# Title", "line two" })
+      vim.api.nvim_set_current_buf(bufnr)
+      session.open(bufnr)
+
+      local client, get_received = connect_sse(session.port())
+      vim.wait(300, function()
+        return server.client_count() == 1
+      end, 10)
+
+      vim.api.nvim_win_set_cursor(0, { 2, 0 })
+      vim.api.nvim_exec_autocmds("CursorMoved", { buffer = bufnr })
+      vim.wait(200)
+
+      assert.is_nil(get_received():find("event: cursor", 1, true))
+
+      pcall(function()
+        client:close()
+      end)
+    end)
+  end)
+
   describe("browser window lifecycle (regression: stale reopen / ghost window)", function()
     local orig_open, orig_close
 

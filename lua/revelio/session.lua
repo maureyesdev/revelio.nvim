@@ -10,6 +10,7 @@ local assets = require("revelio.assets")
 local browser = require("revelio.browser")
 local config = require("revelio.config")
 local watcher = require("revelio.watcher")
+local debounce = require("revelio.debounce")
 
 local AUGROUP = vim.api.nvim_create_augroup("revelio_session", { clear = true })
 
@@ -106,6 +107,20 @@ local function on_sse_connect(client)
   end)
 end
 
+--- Broadcast the cursor's current line to any connected preview so it can
+--- scroll the matching rendered block into view. Debounced per buffer so a
+--- burst of cursor movement collapses into a single scroll.
+local function send_cursor(bufnr)
+  local cfg = config.get()
+  debounce.debounce("revelio-cursor:" .. bufnr, cfg.debounce_ms, function()
+    if not state.current or state.current.bufnr ~= bufnr then
+      return
+    end
+    local row = vim.api.nvim_win_get_cursor(0)[1] - 1 -- 0-based
+    server.broadcast("cursor", { line = row })
+  end)
+end
+
 local function attach_autocmds(bufnr)
   vim.api.nvim_create_autocmd({ "BufUnload", "VimLeavePre" }, {
     group = AUGROUP,
@@ -115,10 +130,22 @@ local function attach_autocmds(bufnr)
       M.close()
     end,
   })
+
+  local cfg = config.get()
+  if cfg.follow_cursor and vim.tbl_contains(cfg.filetypes, vim.bo[bufnr].filetype) then
+    vim.api.nvim_create_autocmd("CursorMoved", {
+      group = AUGROUP,
+      buffer = bufnr,
+      callback = function()
+        send_cursor(bufnr)
+      end,
+    })
+  end
 end
 
 local function detach_autocmds(bufnr)
   pcall(vim.api.nvim_clear_autocmds, { group = AUGROUP, buffer = bufnr })
+  debounce.cancel("revelio-cursor:" .. bufnr)
 end
 
 --- Open a live preview for a buffer (defaults to the current buffer). If a
