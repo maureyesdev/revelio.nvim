@@ -231,6 +231,113 @@ describe("revelio.session", function()
     end)
   end)
 
+  describe("theme", function()
+    local orig_background
+
+    before_each(function()
+      orig_background = vim.o.background
+    end)
+
+    after_each(function()
+      vim.o.background = orig_background
+    end)
+
+    it("resolves theme = 'auto' to 'dark' when &background = 'dark'", function()
+      vim.o.background = "dark"
+      config.setup({ port = 0, auto_open_browser = false, theme = "auto" })
+      local bufnr = make_markdown_buffer({ "# Title" })
+      session.open(bufnr)
+
+      local received = get(session.port(), "/")
+      assert.matches('"theme":"dark"', received)
+      assert.matches('href="[^"]-github%-dark%.min%.css"', received)
+    end)
+
+    it("resolves theme = 'auto' to 'light' when &background = 'light'", function()
+      vim.o.background = "light"
+      config.setup({ port = 0, auto_open_browser = false, theme = "auto" })
+      local bufnr = make_markdown_buffer({ "# Title" })
+      session.open(bufnr)
+
+      local received = get(session.port(), "/")
+      assert.matches('"theme":"light"', received)
+      assert.matches('href="[^"]-github%.min%.css"', received)
+    end)
+
+    it("honors an explicit theme = 'light' regardless of &background", function()
+      vim.o.background = "dark"
+      config.setup({ port = 0, auto_open_browser = false, theme = "light" })
+      local bufnr = make_markdown_buffer({ "# Title" })
+      session.open(bufnr)
+
+      local received = get(session.port(), "/")
+      assert.matches('"theme":"light"', received)
+    end)
+
+    it("includes both light/dark hljs hrefs as data attributes for client-side swapping", function()
+      config.setup({ port = 0, auto_open_browser = false })
+      local bufnr = make_markdown_buffer({ "# Title" })
+      session.open(bufnr)
+
+      local received = get(session.port(), "/")
+      assert.matches('data%-light%-href="[^"]-github%.min%.css"', received)
+      assert.matches('data%-dark%-href="[^"]-github%-dark%.min%.css"', received)
+    end)
+
+    it("broadcasts a theme SSE event on a real background OptionSet when theme = 'auto'", function()
+      config.setup({ port = 0, auto_open_browser = false, theme = "auto" })
+      vim.o.background = "dark"
+      local bufnr = make_markdown_buffer({ "# Title" })
+      session.open(bufnr)
+
+      local client, get_received = connect_sse(session.port())
+      vim.wait(1000, function()
+        return server.client_count() == 1
+      end, 10)
+
+      -- As with TextChanged/CursorMoved elsewhere in this file, a plain
+      -- option assignment doesn't reliably fire OptionSet under the test
+      -- harness's execution context — fire it explicitly to simulate what
+      -- a real ":set background=" does.
+      vim.o.background = "light"
+      vim.api.nvim_exec_autocmds("OptionSet", { pattern = "background" })
+
+      vim.wait(1000, function()
+        return get_received():find("event: theme", 1, true) ~= nil
+      end, 10)
+
+      local received = get_received()
+      assert.matches("event: theme", received)
+      assert.matches('"theme":"light"', received)
+
+      pcall(function()
+        client:close()
+      end)
+    end)
+
+    it("does not broadcast a theme event on background change when theme is explicit", function()
+      config.setup({ port = 0, auto_open_browser = false, theme = "dark" })
+      vim.o.background = "dark"
+      local bufnr = make_markdown_buffer({ "# Title" })
+      session.open(bufnr)
+
+      local client, get_received = connect_sse(session.port())
+      vim.wait(300, function()
+        return server.client_count() == 1
+      end, 10)
+
+      vim.o.background = "light"
+      vim.api.nvim_exec_autocmds("OptionSet", { pattern = "background" })
+      vim.wait(200)
+
+      assert.is_nil(get_received():find("event: theme", 1, true))
+
+      pcall(function()
+        client:close()
+      end)
+    end)
+  end)
+
   describe("scroll sync (cursor)", function()
     it("broadcasts a cursor SSE event on CursorMoved in a markdown buffer with follow_cursor enabled", function()
       config.setup({ port = 0, auto_open_browser = false, follow_cursor = true, debounce_ms = 10 })

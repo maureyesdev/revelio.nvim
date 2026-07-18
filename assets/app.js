@@ -7,10 +7,12 @@
 // markdown-it's own default escaping, i.e. renders as plain code. Phase 5:
 // scroll sync — every block-level token carries its source line as a
 // data-line attribute; a "cursor" SSE event scrolls the nearest one into
-// view. Theme switching (Phase 6) hooks in below.
+// view. Phase 6: theme — data-color-mode drives github-markdown-css'
+// light/dark styling; the hljs stylesheet's href is swapped between its
+// light/dark data-attributes to match.
 (function () {
   var payloadEl = document.getElementById("revelio-payload");
-  var initial = { source: "" };
+  var initial = { source: "", theme: "dark" };
   try {
     initial = JSON.parse(payloadEl.textContent);
   } catch (e) {
@@ -19,6 +21,19 @@
 
   var placeholderEl = document.getElementById("placeholder");
   var contentEl = document.getElementById("content");
+  var hljsThemeEl = document.getElementById("revelio-hljs-theme");
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-color-mode", theme);
+    if (hljsThemeEl) {
+      var href = theme === "light" ? hljsThemeEl.getAttribute("data-light-href") : hljsThemeEl.getAttribute("data-dark-href");
+      if (href) {
+        hljsThemeEl.setAttribute("href", href);
+      }
+    }
+  }
+
+  applyTheme(initial.theme);
 
   var md = window.markdownit({
     highlight: function (str, lang) {
@@ -84,6 +99,10 @@
   events.addEventListener("cursor", function (evt) {
     var data = JSON.parse(evt.data);
     scrollToLine(data.line);
+  });
+  events.addEventListener("theme", function (evt) {
+    var data = JSON.parse(evt.data);
+    applyTheme(data.theme);
   });
   events.onerror = function () {
     console.warn("revelio: SSE connection lost — the preview will stop updating live");

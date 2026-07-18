@@ -25,19 +25,37 @@ local function read_buffer(bufnr)
   return table.concat(lines, "\n")
 end
 
+--- Resolve cfg.theme ("auto" | "light" | "dark") to a concrete "light" or
+--- "dark", following &background when "auto".
+local function resolve_theme(cfg)
+  if cfg.theme ~= "auto" then
+    return cfg.theme
+  end
+  return vim.o.background == "light" and "light" or "dark"
+end
+
 local function current_payload()
-  return { source = state.current and state.current.source or "" }
+  return {
+    source = state.current and state.current.source or "",
+    theme = resolve_theme(config.get()),
+  }
 end
 
 --- Ordered <link>/<script> tags injected into the static index.html, driven
 --- by the CDN URLs in config so cfg.cdn.* is actually honored (rather than
 --- hardcoded into the static asset). The hljs theme stylesheet carries a
---- fixed id so Phase 6 (light/dark) can swap its href at runtime instead of
---- reloading the whole page.
+--- fixed id plus both candidate hrefs as data attributes, so the client can
+--- swap it for light/dark without a full page reload.
 local function client_head_tags(cfg)
+  local theme = resolve_theme(cfg)
+  local hljs_href = theme == "light" and cfg.cdn.highlight_css_light or cfg.cdn.highlight_css_dark
   return table.concat({
     ('<link rel="stylesheet" href="%s" />'):format(cfg.cdn.github_markdown_css),
-    ('<link rel="stylesheet" href="%s" id="revelio-hljs-theme" />'):format(cfg.cdn.highlight_css_light),
+    ('<link rel="stylesheet" id="revelio-hljs-theme" href="%s" data-light-href="%s" data-dark-href="%s" />'):format(
+      hljs_href,
+      cfg.cdn.highlight_css_light,
+      cfg.cdn.highlight_css_dark
+    ),
   }, "\n")
 end
 
@@ -147,6 +165,21 @@ local function detach_autocmds(bufnr)
   pcall(vim.api.nvim_clear_autocmds, { group = AUGROUP, buffer = bufnr })
   debounce.cancel("revelio-cursor:" .. bufnr)
 end
+
+-- Global (not buffer-scoped): when theme = "auto", a real ":set background="
+-- flip should restyle the preview immediately rather than waiting for the
+-- next open(). Registered once at module load; broadcast() is a safe no-op
+-- when no server/clients exist yet.
+vim.api.nvim_create_autocmd("OptionSet", {
+  group = AUGROUP,
+  pattern = "background",
+  callback = function()
+    local cfg = config.get()
+    if cfg.theme == "auto" then
+      server.broadcast("theme", { theme = resolve_theme(cfg) })
+    end
+  end,
+})
 
 --- Open a live preview for a buffer (defaults to the current buffer). If a
 --- session is already active for a different buffer, retargets it instead
