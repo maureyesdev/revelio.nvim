@@ -133,6 +133,8 @@ describe("revelio.session", function()
       assert.matches("markdown%-it@14", received)
       assert.matches("markdown%-it%-task%-lists@2", received)
       assert.matches("github%-markdown%-css@5", received)
+      assert.matches("cdn%-release@11", received)
+      assert.matches('id="revelio%-hljs%-theme"', received)
     end)
   end)
 

@@ -1,8 +1,11 @@
 // Phase 2: render the full buffer as Markdown via markdown-it (GFM tables +
 // strikethrough are built into its default preset) plus the task-lists
-// plugin for GitHub-style checkboxes. Live re-render on buffer change
-// (Phase 3), syntax highlighting (Phase 4), scroll sync (Phase 5), and
-// theme switching (Phase 6) all hook into render() below.
+// plugin for GitHub-style checkboxes. Phase 3: live re-render on buffer
+// change. Phase 4: syntax-highlight fenced code blocks via highlight.js —
+// a fence whose language highlight.js doesn't recognize (e.g. a
+// ```mermaid block, since mermaid_fences = "plain" in v1) falls through to
+// markdown-it's own default escaping, i.e. renders as plain code. Scroll
+// sync (Phase 5) and theme switching (Phase 6) hook in below.
 (function () {
   var payloadEl = document.getElementById("revelio-payload");
   var initial = { source: "" };
@@ -15,7 +18,18 @@
   var placeholderEl = document.getElementById("placeholder");
   var contentEl = document.getElementById("content");
 
-  var md = window.markdownit();
+  var md = window.markdownit({
+    highlight: function (str, lang) {
+      if (window.hljs && lang && window.hljs.getLanguage(lang)) {
+        try {
+          return window.hljs.highlight(str, { language: lang }).value;
+        } catch (e) {
+          console.warn("revelio: highlight.js failed for language " + lang, e);
+        }
+      }
+      return ""; // markdown-it falls back to its own default escaping
+    },
+  });
   if (window.markdownitTaskLists) {
     md.use(window.markdownitTaskLists, { enabled: false });
   }

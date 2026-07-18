@@ -30,15 +30,21 @@ end
 
 --- Ordered <link>/<script> tags injected into the static index.html, driven
 --- by the CDN URLs in config so cfg.cdn.* is actually honored (rather than
---- hardcoded into the static asset).
+--- hardcoded into the static asset). The hljs theme stylesheet carries a
+--- fixed id so Phase 6 (light/dark) can swap its href at runtime instead of
+--- reloading the whole page.
 local function client_head_tags(cfg)
-  return ('<link rel="stylesheet" href="%s" />'):format(cfg.cdn.github_markdown_css)
+  return table.concat({
+    ('<link rel="stylesheet" href="%s" />'):format(cfg.cdn.github_markdown_css),
+    ('<link rel="stylesheet" href="%s" id="revelio-hljs-theme" />'):format(cfg.cdn.highlight_css_light),
+  }, "\n")
 end
 
 local function client_script_tags(cfg)
   return table.concat({
     ('<script src="%s"></script>'):format(cfg.cdn.markdown_it),
     ('<script src="%s"></script>'):format(cfg.cdn.task_lists),
+    ('<script src="%s"></script>'):format(cfg.cdn.highlight_js),
   }, "\n")
 end
 
