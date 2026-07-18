@@ -1,6 +1,7 @@
 -- Orchestrates a single active preview session: reads the buffer, starts
 -- the local server, opens the browser, and tears everything down on close.
--- Live re-render on buffer change lands in Phase 3.
+-- A debounced watcher re-reads the buffer and broadcasts the new source
+-- over SSE on every change.
 local M = {}
 
 local server = require("revelio.server")
@@ -8,6 +9,7 @@ local http = require("revelio.http")
 local assets = require("revelio.assets")
 local browser = require("revelio.browser")
 local config = require("revelio.config")
+local watcher = require("revelio.watcher")
 
 local AUGROUP = vim.api.nvim_create_augroup("revelio_session", { clear = true })
 
@@ -146,8 +148,10 @@ function M.open(bufnr)
 
   if previous_bufnr and previous_bufnr ~= bufnr then
     detach_autocmds(previous_bufnr)
+    watcher.detach(previous_bufnr)
   end
   attach_autocmds(bufnr)
+  watcher.attach(bufnr, M.refresh)
 
   local url = ("http://%s:%d/"):format(cfg.host, port)
   local has_live_client = server.client_count() > 0
@@ -177,6 +181,7 @@ function M.close()
     return
   end
   detach_autocmds(state.current.bufnr)
+  watcher.detach(state.current.bufnr)
   if state.browser_handle then
     browser.close_app_window(state.browser_handle)
     state.browser_handle = nil
@@ -195,6 +200,22 @@ function M.toggle(bufnr)
   else
     M.open(bufnr)
   end
+end
+
+--- Re-read the active session's buffer and push the new source to any
+--- connected SSE clients — but only when the text actually changed, so a
+--- no-op autocmd firing doesn't trigger a redundant repaint. No-op if no
+--- session is active.
+function M.refresh()
+  if not state.current then
+    return
+  end
+  local source = read_buffer(state.current.bufnr)
+  if source == state.current.source then
+    return
+  end
+  state.current.source = source
+  server.broadcast("source", current_payload())
 end
 
 --- Export the current document to a self-contained HTML file.

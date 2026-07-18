@@ -156,6 +156,79 @@ describe("revelio.session", function()
     end)
   end)
 
+  describe("live sync (refresh)", function()
+    it("refresh() is a no-op when no session is active", function()
+      session.refresh()
+      assert.is_nil(session.current())
+    end)
+
+    it("refresh() broadcasts the new source when the buffer changed", function()
+      local bufnr = make_markdown_buffer({ "# Title", "before" })
+      session.open(bufnr)
+
+      local client, get_received = connect_sse(session.port())
+      vim.wait(1000, function()
+        return server.client_count() == 1
+      end, 10)
+
+      vim.api.nvim_buf_set_lines(bufnr, 1, 2, false, { "after" })
+      session.refresh()
+
+      vim.wait(1000, function()
+        return get_received():find("after", 1, true) ~= nil
+      end, 10)
+
+      assert.matches("after", get_received())
+
+      pcall(function()
+        client:close()
+      end)
+    end)
+
+    it("refresh() does not broadcast when the buffer text is unchanged", function()
+      local bufnr = make_markdown_buffer({ "# Title", "same" })
+      session.open(bufnr)
+
+      local client, get_received = connect_sse(session.port())
+      vim.wait(1000, function()
+        return get_received():find("event: source", 1, true) ~= nil
+      end, 10)
+
+      local before = get_received()
+      session.refresh()
+      vim.wait(100)
+      assert.equals(before, get_received())
+
+      pcall(function()
+        client:close()
+      end)
+    end)
+
+    it("watcher.attach fires session.refresh (debounced) after a TextChanged edit", function()
+      require("revelio.config").setup({ port = 0, auto_open_browser = false, debounce_ms = 10 })
+      local bufnr = make_markdown_buffer({ "# Title", "one" })
+      session.open(bufnr)
+
+      local client, get_received = connect_sse(session.port())
+      vim.wait(1000, function()
+        return server.client_count() == 1
+      end, 10)
+
+      vim.api.nvim_buf_set_lines(bufnr, 1, 2, false, { "two" })
+      vim.api.nvim_exec_autocmds("TextChanged", { buffer = bufnr })
+
+      vim.wait(500, function()
+        return get_received():find("two", 1, true) ~= nil
+      end, 10)
+
+      assert.matches("two", get_received())
+
+      pcall(function()
+        client:close()
+      end)
+    end)
+  end)
+
   describe("browser window lifecycle (regression: stale reopen / ghost window)", function()
     local orig_open, orig_close
 
