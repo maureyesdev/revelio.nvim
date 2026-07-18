@@ -41,6 +41,39 @@ local function get(port, path)
   return received
 end
 
+--- POST body_tbl (JSON-encoded) to path on the session's server; returns
+--- the raw HTTP response text (status line + headers + body).
+local function post(port, path, body_tbl)
+  local body = vim.json.encode(body_tbl)
+  local req = ("POST %s HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s")
+    :format(path, #body, body)
+
+  local received = ""
+  local done = false
+  local client = uv.new_tcp()
+  client:connect("127.0.0.1", port, function(conn_err)
+    if conn_err then
+      done = true
+      return
+    end
+    client:write(req)
+    client:read_start(function(_, chunk)
+      if chunk then
+        received = received .. chunk
+      else
+        done = true
+        pcall(function()
+          client:close()
+        end)
+      end
+    end)
+  end)
+  vim.wait(2000, function()
+    return done
+  end, 10)
+  return received
+end
+
 --- Connect to the SSE stream and keep reading; returns the client handle
 --- and a getter for everything received so far.
 local function connect_sse(port)
@@ -480,6 +513,102 @@ describe("revelio.session", function()
 
       assert.is_not_nil(closed_handle)
       assert.equals(42, closed_handle.job)
+    end)
+  end)
+
+  describe("export (Phase 7)", function()
+    it("export() is a no-op (no crash) when no session is active", function()
+      session.export()
+      assert.is_nil(session.current())
+    end)
+
+    it("export() broadcasts an 'export' SSE event with server_side = false by default", function()
+      config.setup({ port = 0, auto_open_browser = false })
+      local bufnr = make_markdown_buffer({ "# Title" })
+      session.open(bufnr)
+
+      local client, get_received = connect_sse(session.port())
+      vim.wait(1000, function()
+        return server.client_count() == 1
+      end, 10)
+
+      session.export()
+
+      vim.wait(1000, function()
+        return get_received():find("event: export", 1, true) ~= nil
+      end, 10)
+
+      local received = get_received()
+      assert.matches("event: export", received)
+      assert.matches('"server_side":false', received)
+
+      pcall(function()
+        client:close()
+      end)
+    end)
+
+    it("export() broadcasts server_side = true when export.dir is configured", function()
+      local export_dir = vim.fn.tempname()
+      config.setup({ port = 0, auto_open_browser = false, export = { dir = export_dir } })
+      local bufnr = make_markdown_buffer({ "# Title" })
+      session.open(bufnr)
+
+      local client, get_received = connect_sse(session.port())
+      vim.wait(1000, function()
+        return server.client_count() == 1
+      end, 10)
+
+      session.export()
+
+      vim.wait(1000, function()
+        return get_received():find("event: export", 1, true) ~= nil
+      end, 10)
+
+      assert.matches('"server_side":true', get_received())
+
+      pcall(function()
+        client:close()
+      end)
+    end)
+
+    it("POST /api/export returns 400 when export.dir is not configured", function()
+      config.setup({ port = 0, auto_open_browser = false })
+      local bufnr = make_markdown_buffer({ "# Title" })
+      session.open(bufnr)
+
+      local received = post(session.port(), "/api/export", { html = "<html></html>" })
+      assert.matches("400", received)
+    end)
+
+    it("POST /api/export writes the HTML into export.dir with a basename-derived filename", function()
+      local export_dir = vim.fn.tempname()
+      config.setup({ port = 0, auto_open_browser = false, export = { dir = export_dir } })
+
+      local bufnr = make_markdown_buffer({ "# Title" })
+      vim.api.nvim_buf_set_name(bufnr, "/tmp/my-notes.md")
+      session.open(bufnr)
+
+      post(session.port(), "/api/export", { html = "<html><body>hello export</body></html>" })
+
+      local files = vim.fn.readdir(export_dir)
+      assert.equals(1, #files)
+      assert.matches("^my%-notes%-", files[1])
+      assert.matches("%.html$", files[1])
+
+      local f = io.open(export_dir .. "/" .. files[1], "r")
+      local content = f:read("*a")
+      f:close()
+      assert.matches("hello export", content)
+    end)
+
+    it("POST /api/export returns 400 for a malformed payload", function()
+      local export_dir = vim.fn.tempname()
+      config.setup({ port = 0, auto_open_browser = false, export = { dir = export_dir } })
+      local bufnr = make_markdown_buffer({ "# Title" })
+      session.open(bufnr)
+
+      local received = post(session.port(), "/api/export", { nothing_useful = true })
+      assert.matches("400", received)
     end)
   end)
 end)

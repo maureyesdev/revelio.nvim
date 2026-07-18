@@ -34,10 +34,22 @@ local function resolve_theme(cfg)
   return vim.o.background == "light" and "light" or "dark"
 end
 
+--- Filename stem for exports, derived from the buffer's name (falls back to
+--- "revelio" for an unnamed buffer).
+local function export_basename()
+  if not state.current then
+    return "revelio"
+  end
+  local bufname = vim.api.nvim_buf_get_name(state.current.bufnr)
+  local basename = vim.fn.fnamemodify(bufname, ":t:r")
+  return basename ~= "" and basename or "revelio"
+end
+
 local function current_payload()
   return {
     source = state.current and state.current.source or "",
     theme = resolve_theme(config.get()),
+    basename = export_basename(),
   }
 end
 
@@ -112,6 +124,40 @@ local function build_routes(cfg)
     end,
 
     ["GET /events"] = "sse",
+
+    ["POST /api/export"] = function(req)
+      local export_cfg = config.get().export
+      if not export_cfg.dir then
+        return 400, { ["Content-Type"] = "text/plain" }, "revelio: export.dir is not configured"
+      end
+
+      local ok, decoded = pcall(vim.json.decode, req.body)
+      if not ok or type(decoded) ~= "table" or not decoded.html then
+        return 400, { ["Content-Type"] = "text/plain" }, "revelio: malformed export payload"
+      end
+
+      local dir = vim.fn.expand(export_cfg.dir)
+      local mkdir_ok = pcall(vim.fn.mkdir, dir, "p")
+      if not mkdir_ok then
+        return 500, { ["Content-Type"] = "text/plain" }, "revelio: failed to create export.dir"
+      end
+
+      local filename = ("%s-%s.html"):format(export_basename(), os.date("%Y%m%d-%H%M%S"))
+      local path = dir .. "/" .. filename
+
+      local f, ferr = io.open(path, "w")
+      if not f then
+        return 500, { ["Content-Type"] = "text/plain" }, "revelio: " .. tostring(ferr)
+      end
+      f:write(decoded.html)
+      f:close()
+
+      vim.schedule(function()
+        vim.notify(("revelio: exported to %s"):format(path), vim.log.levels.INFO)
+      end)
+
+      return 200, { ["Content-Type"] = "application/json" }, vim.json.encode({ path = path })
+    end,
   }
 end
 
@@ -284,9 +330,19 @@ function M.refresh()
   server.broadcast("source", current_payload())
 end
 
---- Export the current document to a self-contained HTML file.
+--- Ask the connected preview to export the current document as a
+--- self-contained HTML file. The browser does the actual DOM
+--- serialization / CSS inlining; this just triggers it over the existing
+--- SSE channel. When export.dir is configured, the browser POSTs the
+--- assembled HTML back for a server-side save; otherwise it's a plain
+--- browser download.
 function M.export()
-  vim.notify("revelio: export not implemented yet (Phase 7)", vim.log.levels.WARN)
+  if not state.current then
+    vim.notify("revelio: no active preview to export", vim.log.levels.WARN)
+    return
+  end
+  local cfg = config.get()
+  server.broadcast("export", { server_side = cfg.export.dir ~= nil })
 end
 
 --- The active session's buffer, or nil if no session is active.
