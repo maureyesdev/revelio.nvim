@@ -3,8 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <title>revelio.nvim</title>
-    <link rel="stylesheet" href="/app.css" />
     {{CLIENT_HEAD}}
+    <!-- app.css loads last so its .markdown-body sizing (max-width/margin:
+         auto/padding) overrides github-markdown-css's own base reset, which
+         sets margin: 0 on .markdown-body — loading app.css first left
+         content flush-left with a big blank gutter instead of centered. -->
+    <link rel="stylesheet" href="/app.css" />
   </head>
   <body>
     <div id="placeholder">revelio: waiting for content&hellip;</div>

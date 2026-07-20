@@ -169,6 +169,21 @@ describe("revelio.session", function()
       assert.matches("cdn%-release@11", received)
       assert.matches('id="revelio%-hljs%-theme"', received)
     end)
+
+    it("loads /app.css after the CDN stylesheets, so its .markdown-body sizing overrides their base reset", function()
+      -- Regression: github-markdown-css's own .markdown-body rule sets
+      -- margin: 0, clobbering our margin: 0 auto centering if app.css loads
+      -- first. app.css must come last in cascade order.
+      local bufnr = make_markdown_buffer({ "# Title" })
+      session.open(bufnr)
+
+      local received = get(session.port(), "/")
+      local cdn_pos = received:find("github%-markdown%-css@5")
+      local app_css_pos = received:find('href="/app%.css"')
+      assert.is_not_nil(cdn_pos)
+      assert.is_not_nil(app_css_pos)
+      assert.is_true(app_css_pos > cdn_pos, "app.css must load after github-markdown-css")
+    end)
   end)
 
   describe("SSE", function()
