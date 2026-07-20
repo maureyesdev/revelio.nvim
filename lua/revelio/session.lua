@@ -46,10 +46,12 @@ local function export_basename()
 end
 
 local function current_payload()
+  local cfg = config.get()
   return {
     source = state.current and state.current.source or "",
-    theme = resolve_theme(config.get()),
+    theme = resolve_theme(cfg),
     basename = export_basename(),
+    mermaid_fences = cfg.mermaid_fences,
   }
 end
 
@@ -72,11 +74,15 @@ local function client_head_tags(cfg)
 end
 
 local function client_script_tags(cfg)
-  return table.concat({
+  local tags = {
     ('<script src="%s"></script>'):format(cfg.cdn.markdown_it),
     ('<script src="%s"></script>'):format(cfg.cdn.task_lists),
     ('<script src="%s"></script>'):format(cfg.cdn.highlight_js),
-  }, "\n")
+  }
+  if cfg.mermaid_fences == "render" then
+    table.insert(tags, ('<script src="%s"></script>'):format(cfg.cdn.mermaid_js))
+  end
+  return table.concat(tags, "\n")
 end
 
 local function render_index(cfg)

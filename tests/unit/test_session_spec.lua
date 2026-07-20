@@ -184,6 +184,32 @@ describe("revelio.session", function()
       assert.is_not_nil(app_css_pos)
       assert.is_true(app_css_pos > cdn_pos, "app.css must load after github-markdown-css")
     end)
+
+    it("omits the mermaid.js script tag by default (mermaid_fences = 'plain')", function()
+      local bufnr = make_markdown_buffer({ "# Title" })
+      session.open(bufnr)
+
+      local received = get(session.port(), "/")
+      assert.is_nil(received:find("mermaid@11", 1, true))
+    end)
+
+    it("includes the mermaid.js script tag when mermaid_fences = 'render'", function()
+      config.setup({ port = 0, auto_open_browser = false, mermaid_fences = "render" })
+      local bufnr = make_markdown_buffer({ "# Title" })
+      session.open(bufnr)
+
+      local received = get(session.port(), "/")
+      assert.matches("mermaid@11", received)
+    end)
+
+    it("includes mermaid_fences in the initial payload", function()
+      config.setup({ port = 0, auto_open_browser = false, mermaid_fences = "render" })
+      local bufnr = make_markdown_buffer({ "# Title" })
+      session.open(bufnr)
+
+      local received = get(session.port(), "/")
+      assert.matches('"mermaid_fences":"render"', received)
+    end)
   end)
 
   describe("SSE", function()

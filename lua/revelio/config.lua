@@ -7,6 +7,7 @@ local M = {}
 ---@field highlight_css_light string CDN URL for highlight.js's light theme CSS
 ---@field highlight_css_dark string CDN URL for highlight.js's dark theme CSS
 ---@field github_markdown_css string CDN URL for github-markdown-css
+---@field mermaid_js string CDN URL for mermaid.js (only fetched when mermaid_fences = "render")
 
 ---@class revelio.ExportConfig
 ---@field dir string|nil Directory to save exports server-side; nil = browser download (default: nil)
@@ -27,7 +28,7 @@ local M = {}
 ---@field debounce_ms integer Milliseconds to wait after the last keystroke before re-rendering (default: 250)
 ---@field follow_cursor boolean Preview scrolls to track the cursor position (default: true)
 ---@field filetypes string[] Filetypes revelio will preview (default: { "markdown", "markdown.mdx" })
----@field mermaid_fences string How ```mermaid fenced blocks are rendered: "plain" (highlighted code, default) | "render" (reserved for a future release — falls back to "plain" with a warning)
+---@field mermaid_fences string How ```mermaid fenced blocks are rendered: "plain" (highlighted code, default) | "render" (real diagrams via mermaid.js)
 ---@field cdn revelio.CdnConfig
 ---@field export revelio.ExportConfig
 ---@field default_keymaps boolean Whether to register the built-in keymaps on setup() (default: true)
@@ -58,6 +59,7 @@ local DEFAULTS = {
     highlight_css_light = "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/styles/github.min.css",
     highlight_css_dark = "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/styles/github-dark.min.css",
     github_markdown_css = "https://cdn.jsdelivr.net/npm/github-markdown-css@5/github-markdown.css",
+    mermaid_js = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js",
   },
 
   export = {
@@ -84,12 +86,6 @@ function M.setup(opts)
   if _cfg.mermaid_fences ~= "plain" and _cfg.mermaid_fences ~= "render" then
     vim.notify(
       ('revelio: unknown mermaid_fences %q — falling back to "plain"'):format(_cfg.mermaid_fences),
-      vim.log.levels.WARN
-    )
-    _cfg.mermaid_fences = "plain"
-  elseif _cfg.mermaid_fences == "render" then
-    vim.notify(
-      'revelio: mermaid_fences = "render" is not implemented yet — falling back to "plain"',
       vim.log.levels.WARN
     )
     _cfg.mermaid_fences = "plain"

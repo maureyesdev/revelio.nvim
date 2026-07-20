@@ -86,10 +86,9 @@ require("revelio").setup({
   -- Sources
   filetypes = { "markdown", "markdown.mdx" },
 
-  -- ```mermaid fenced blocks: "plain" renders them as highlighted code (v1
-  -- behavior). "render" is reserved for a future release — setting it warns
-  -- and falls back to "plain". mermish.nvim already owns dedicated mermaid
-  -- diagram preview.
+  -- ```mermaid fenced blocks: "plain" renders them as highlighted code |
+  -- "render" renders them as real diagrams via mermaid.js (fetched from CDN
+  -- only when this is set).
   mermaid_fences = "plain",
 
   -- CDN sources for the client-side rendering stack
@@ -100,6 +99,7 @@ require("revelio").setup({
     highlight_css_light  = "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/styles/github.min.css",
     highlight_css_dark   = "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/styles/github-dark.min.css",
     github_markdown_css  = "https://cdn.jsdelivr.net/npm/github-markdown-css@5/github-markdown.css",
+    mermaid_js           = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js",
   },
 
   -- Export
@@ -148,6 +148,19 @@ With `follow_cursor = true` (the default), moving the cursor in the Markdown
 buffer scrolls the preview to the nearest rendered block, debounced by
 `debounce_ms`.
 
+### Mermaid diagrams
+
+By default (`mermaid_fences = "plain"`), fenced ` ```mermaid ` blocks render
+as plain highlighted code — revelio stays pure-Markdown, and
+[mermish.nvim](https://github.com/maureyesdev/mermish.nvim) owns dedicated
+mermaid diagram preview.
+
+Set `mermaid_fences = "render"` to render them as real diagrams instead,
+matching how GitHub renders embedded mermaid in READMEs. mermaid.js is
+fetched from CDN only when this is set. Diagrams re-render on every live-sync
+update and on theme changes (mermaid bakes its theme into the SVG itself, so
+a light/dark switch re-renders rather than just restyling).
+
 ### Export
 
 `:RevelioExport` (or `<leader>ve`) assembles a single, self-contained HTML
@@ -175,6 +188,8 @@ Built in phases; all shipped:
 - [x] **Phase 5** — cursor-follow scroll sync
 - [x] **Phase 6** — theme (auto/light/dark)
 - [x] **Phase 7** — self-contained HTML export
+- [x] **Phase 8** — health check, docs, polish
+- [x] **Phase 9** — mermaid diagram rendering (`mermaid_fences = "render"`)
 
 ---
 

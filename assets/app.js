@@ -1,21 +1,21 @@
 // Phase 2: render the full buffer as Markdown via markdown-it (GFM tables +
 // strikethrough are built into its default preset) plus the task-lists
 // plugin for GitHub-style checkboxes. Phase 3: live re-render on buffer
-// change. Phase 4: syntax-highlight fenced code blocks via highlight.js —
-// a fence whose language highlight.js doesn't recognize (e.g. a
-// ```mermaid block, since mermaid_fences = "plain" in v1) falls through to
-// markdown-it's own default escaping, i.e. renders as plain code. Phase 5:
-// scroll sync — every block-level token carries its source line as a
-// data-line attribute; a "cursor" SSE event scrolls the nearest one into
+// change. Phase 4: syntax-highlight fenced code blocks via highlight.js.
+// Phase 5: scroll sync — every block-level token carries its source line as
+// a data-line attribute; a "cursor" SSE event scrolls the nearest one into
 // view. Phase 6: theme — data-color-mode drives github-markdown-css'
 // light/dark styling; the hljs stylesheet's href is swapped between its
 // light/dark data-attributes to match. Phase 7: export — an "export" SSE
 // event triggers assembling a self-contained HTML file (all current
 // stylesheets fetched and inlined, live-sync script omitted), either
-// downloaded directly or POSTed back for a server-side save.
+// downloaded directly or POSTed back for a server-side save. Phase 9:
+// mermaid_fences = "render" overrides markdown-it's fence renderer so a
+// ```mermaid block becomes a real diagram (mermaid.js) instead of
+// highlighted/plain code text — every other language is untouched.
 (function () {
   var payloadEl = document.getElementById("revelio-payload");
-  var initial = { source: "", theme: "dark", basename: "revelio" };
+  var initial = { source: "", theme: "dark", basename: "revelio", mermaid_fences: "plain" };
   try {
     initial = JSON.parse(payloadEl.textContent);
   } catch (e) {
@@ -25,6 +25,32 @@
   var placeholderEl = document.getElementById("placeholder");
   var contentEl = document.getElementById("content");
   var hljsThemeEl = document.getElementById("revelio-hljs-theme");
+  var mermaidRenderMode = initial.mermaid_fences === "render";
+  var lastSource = "";
+
+  // mermaid bakes its theme into the rendered SVG itself, not CSS — a theme
+  // change can't just restyle existing diagrams, it has to re-render them.
+  function mermaidTheme(theme) {
+    return theme === "light" ? "default" : "dark";
+  }
+
+  function initMermaid(theme) {
+    if (!window.mermaid) {
+      return;
+    }
+    window.mermaid.initialize({ startOnLoad: false, theme: mermaidTheme(theme), securityLevel: "strict" });
+  }
+
+  function renderMermaidDiagrams() {
+    if (!mermaidRenderMode || !window.mermaid) {
+      return;
+    }
+    try {
+      window.mermaid.run({ querySelector: ".mermaid", suppressErrors: true });
+    } catch (e) {
+      console.warn("revelio: mermaid.run() failed", e);
+    }
+  }
 
   function applyTheme(theme) {
     document.documentElement.setAttribute("data-color-mode", theme);
@@ -32,6 +58,14 @@
       var href = theme === "light" ? hljsThemeEl.getAttribute("data-light-href") : hljsThemeEl.getAttribute("data-dark-href");
       if (href) {
         hljsThemeEl.setAttribute("href", href);
+      }
+    }
+    if (mermaidRenderMode) {
+      initMermaid(theme);
+      // Skip on the very first call (before the initial render() below has
+      // ever run) — there's nothing rendered yet to re-render.
+      if (lastSource) {
+        render(lastSource);
       }
     }
   }
@@ -64,12 +98,33 @@
     });
   });
 
+  if (mermaidRenderMode) {
+    var defaultFence =
+      md.renderer.rules.fence ||
+      function (tokens, idx, options, env, self) {
+        return self.renderToken(tokens, idx, options);
+      };
+
+    md.renderer.rules.fence = function (tokens, idx, options, env, self) {
+      var token = tokens[idx];
+      var lang = (token.info || "").trim().split(/\s+/)[0];
+      if (lang === "mermaid") {
+        var dataLine = token.attrGet("data-line");
+        var dataLineAttr = dataLine !== null ? ' data-line="' + dataLine + '"' : "";
+        return '<div class="mermaid"' + dataLineAttr + ">" + md.utils.escapeHtml(token.content) + "</div>\n";
+      }
+      return defaultFence(tokens, idx, options, env, self);
+    };
+  }
+
   function render(source) {
+    lastSource = source || "";
     if (placeholderEl) {
       placeholderEl.remove();
       placeholderEl = null;
     }
-    contentEl.innerHTML = md.render(source || "");
+    contentEl.innerHTML = md.render(lastSource);
+    renderMermaidDiagrams();
   }
 
   render(initial.source);

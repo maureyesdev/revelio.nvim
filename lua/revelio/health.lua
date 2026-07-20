@@ -60,11 +60,14 @@ function M.check()
   end
 
   -- mermaid_fences is validated at setup() time (falls back to "plain" with
-  -- a warning), so by the time checkhealth runs it can only ever be "plain".
-  if cfg.mermaid_fences == "plain" then
+  -- a warning on any other unrecognized value), so by the time checkhealth
+  -- runs it's always "plain" or "render".
+  if cfg.mermaid_fences == "render" then
+    h.ok('mermaid_fences = "render" — ```mermaid blocks render as real diagrams (fetches mermaid.js from CDN)')
+  elseif cfg.mermaid_fences == "plain" then
     h.ok('mermaid_fences = "plain" — ```mermaid blocks render as plain highlighted code')
   else
-    h.warn(("mermaid_fences = %q is unexpected — expected \"plain\""):format(cfg.mermaid_fences))
+    h.warn(("mermaid_fences = %q is unexpected — expected \"plain\" or \"render\""):format(cfg.mermaid_fences))
   end
 
   -- Export directory, if configured

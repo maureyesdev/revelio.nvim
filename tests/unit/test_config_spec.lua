@@ -52,6 +52,10 @@ describe("revelio.config", function()
       assert.matches("markdown%-it@14", config.get().cdn.markdown_it)
     end)
 
+    it("has cdn.mermaid_js pointing at mermaid v11", function()
+      assert.matches("mermaid@11", config.get().cdn.mermaid_js)
+    end)
+
     it("has export.dir = nil", function()
       assert.is_nil(config.get().export.dir)
     end)
@@ -66,9 +70,9 @@ describe("revelio.config", function()
   end)
 
   describe("mermaid_fences validation", function()
-    it("falls back to 'plain' and warns when set to 'render'", function()
+    it("accepts 'render' unchanged", function()
       config.setup({ mermaid_fences = "render" })
-      assert.equals("plain", config.get().mermaid_fences)
+      assert.equals("render", config.get().mermaid_fences)
     end)
 
     it("falls back to 'plain' and warns on an unknown value", function()
